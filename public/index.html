@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<!-- Book Vault client | Author: Muhammad Shaheer Haider -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Book Vault</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#FBF8F3;--sand:#EFE6DA;--line:#D9CBB9;--tan:#A67C52;--bark:#6B4A32;--espresso:#33200F;--ink:#1A1512;--white:#fff;
+--serif:'Fraunces',Georgia,serif;--sans:'DM Sans',system-ui,sans-serif}
+*{box-sizing:border-box;margin:0}
+body{font:16px/1.5 var(--sans);background:var(--paper);color:var(--ink);display:grid;grid-template-columns:300px 1fr;min-height:100vh}
+:focus-visible{outline:3px solid var(--tan);outline-offset:2px}
+aside{background:var(--espresso);color:var(--sand);padding:40px 28px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:28px}
+aside h1{font:700 2.6rem/1 var(--serif);color:var(--white);letter-spacing:-.02em}
+aside p{color:var(--line);font-size:.95rem}
+.count{font:500 3.4rem/1 var(--serif);color:var(--white)}
+.filters{display:flex;flex-direction:column;gap:6px}
+.filters button,select{font:inherit;text-align:left;padding:10px 14px;border-radius:6px;border:1px solid transparent;background:transparent;color:var(--sand);cursor:pointer}
+.filters button:hover{background:rgba(255,255,255,.08)}
+.filters button[aria-pressed=true]{background:var(--sand);color:var(--espresso);font-weight:700}
+aside select{width:100%;background:var(--bark);color:var(--white);border-color:var(--tan)}
+.btn{font:700 1rem var(--sans);padding:12px 20px;border-radius:6px;border:2px solid var(--ink);background:var(--ink);color:var(--white);cursor:pointer}
+.btn:hover{background:var(--bark);border-color:var(--bark)}
+.btn.ghost{background:transparent;color:var(--ink)}.btn.ghost:hover{background:var(--sand);color:var(--ink);border-color:var(--ink)}
+aside .btn{background:var(--white);color:var(--espresso);border-color:var(--white);margin-top:auto}
+aside .btn:hover{background:var(--sand);border-color:var(--sand)}
+main{padding:40px clamp(20px,5vw,64px);max-width:980px;width:100%}
+.search{width:100%;font:inherit;padding:14px 18px;border:2px solid var(--ink);border-radius:6px;background:var(--white);margin-bottom:28px}
+ul{list-style:none;padding:0;border-top:2px solid var(--ink)}
+li{display:grid;grid-template-columns:1fr auto;gap:8px 24px;padding:20px 4px;border-bottom:1px solid var(--line)}
+li h2{font:700 1.35rem/1.25 var(--serif)}
+.meta{color:var(--bark);font-size:.92rem}
+.pill{display:inline-block;font-size:.8rem;font-weight:700;padding:2px 10px;border-radius:99px;border:1.5px solid var(--ink);margin-right:8px}
+.pill.reading{background:var(--tan);border-color:var(--tan);color:var(--white)}
+.pill.finished{background:var(--ink);color:var(--white)}
+.acts{display:flex;gap:8px;align-items:center}
+.acts button{font:500 .9rem var(--sans);background:none;border:0;border-bottom:1.5px solid var(--bark);color:var(--bark);cursor:pointer;padding:2px 0}
+.acts .del{color:var(--ink);border-color:var(--ink)}
+.empty{padding:48px 4px;color:var(--bark);font:500 1.2rem var(--serif)}
+dialog{border:2px solid var(--ink);border-radius:10px;padding:32px;width:min(560px,92vw);background:var(--paper);margin:auto}
+dialog::backdrop{background:rgba(26,21,18,.6)}
+dialog h2{font:700 1.7rem var(--serif);margin-bottom:20px}
+form{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+label{display:flex;flex-direction:column;gap:4px;font-weight:500;font-size:.92rem}
+.full{grid-column:1/-1}
+input,form select{font:inherit;padding:10px 12px;border:1.5px solid var(--bark);border-radius:6px;background:var(--white)}
+.err{color:#8A1C1C;font-size:.82rem;font-weight:500}
+.row{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px;margin-top:8px}
+#toast{position:fixed;bottom:24px;right:24px;background:var(--ink);color:var(--white);padding:12px 20px;border-radius:6px;opacity:0;transition:opacity .2s;pointer-events:none}
+#toast.on{opacity:1}
+@media(max-width:800px){body{grid-template-columns:1fr}aside{position:static;height:auto;padding:24px 20px}li{grid-template-columns:1fr}.count{font-size:2.4rem}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<aside>
+  <div><h1>Book Vault</h1><p>Every book you own, want, or have finished — kept in PostgreSQL.</p></div>
+  <div><div class="count" id="total">0</div><p>books shown</p></div>
+  <div class="filters" id="statusFilter" role="group" aria-label="Filter by status">
+    <button data-v="" aria-pressed="true">All books</button>
+    <button data-v="to_read" aria-pressed="false">To read</button>
+    <button data-v="reading" aria-pressed="false">Reading</button>
+    <button data-v="finished" aria-pressed="false">Finished</button>
+  </div>
+  <select id="catFilter" aria-label="Filter by category"><option value="">All categories</option></select>
+  <button class="btn" id="addBtn">Add book</button>
+</aside>
+<main>
+  <input class="search" id="q" type="search" placeholder="Search by title or author" aria-label="Search books">
+  <ul id="list"></ul>
+</main>
+
+<dialog id="dlg">
+  <h2 id="dlgTitle">Add book</h2>
+  <form id="form" novalidate>
+    <label class="full">Title<input name="title" required maxlength="150"><span class="err" data-e="title"></span></label>
+    <label>Author<input name="author" required maxlength="100"><span class="err" data-e="author"></span></label>
+    <label>ISBN<input name="isbn" maxlength="17"><span class="err" data-e="isbn"></span></label>
+    <label>Category<select name="category_id"><option value="">None</option></select></label>
+    <label>Status<select name="status"><option value="to_read">To read</option><option value="reading">Reading</option><option value="finished">Finished</option></select></label>
+    <label>Year<input name="year" type="number"><span class="err" data-e="year"></span></label>
+    <label>Pages<input name="pages" type="number" min="1"><span class="err" data-e="pages"></span></label>
+    <label>Rating (1–5)<input name="rating" type="number" min="1" max="5"><span class="err" data-e="rating"></span></label>
+    <div class="row"><button type="button" class="btn ghost" id="cancel">Cancel</button><button class="btn" type="submit">Save book</button></div>
+  </form>
+</dialog>
+<div id="toast" role="status"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const state = { status: '', category_id: '', q: '', editing: null };
+const LABEL = { to_read: 'To read', reading: 'Reading', finished: 'Finished' };
+
+async function api(path, opts = {}) {
+  const res = await fetch('/api' + path, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  if (res.status === 204) return null;
+  const body = await res.json();
+  if (!res.ok) throw Object.assign(new Error(body.error), { details: body.details });
+  return body;
+}
+
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('on');
+  setTimeout(() => t.classList.remove('on'), 2200);
+}
+
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined) n.textContent = text; // textContent prevents XSS
+  return n;
+}
+
+async function load() {
+  const p = new URLSearchParams({ limit: 100 });
+  Object.entries({ status: state.status, category_id: state.category_id, q: state.q })
+    .forEach(([k, v]) => v && p.set(k, v));
+  try {
+    const { data, meta } = await api('/books?' + p);
+    $('#total').textContent = meta.total;
+    const list = $('#list'); list.replaceChildren();
+    if (!data.length) list.append(el('li', 'empty', 'No books match. Add one to start your vault.'));
+    data.forEach((b) => list.append(row(b)));
+  } catch (e) { toast(e.message); }
+}
+
+function row(b) {
+  const li = el('li'), info = el('div'), acts = el('div', 'acts');
+  info.append(el('h2', '', b.title));
+  const pill = el('span', 'pill ' + b.status, LABEL[b.status]);
+  const bits = [b.author, b.category, b.year, b.pages && b.pages + ' pages', b.rating && '★'.repeat(b.rating)].filter(Boolean);
+  const meta = el('p', 'meta', bits.join(', ')); meta.prepend(pill);
+  info.append(meta);
+  const edit = el('button', '', 'Edit'), del = el('button', 'del', 'Delete');
+  edit.onclick = () => openForm(b);
+  del.onclick = async () => {
+    if (!confirm(`Delete “${b.title}”?`)) return;
+    try { await api('/books/' + b.id, { method: 'DELETE' }); toast('Book deleted'); load(); }
+    catch (e) { toast(e.message); }
+  };
+  acts.append(edit, del); li.append(info, acts);
+  return li;
+}
+
+function openForm(book) {
+  state.editing = book?.id || null;
+  $('#dlgTitle').textContent = book ? 'Edit book' : 'Add book';
+  const f = $('#form'); f.reset();
+  document.querySelectorAll('.err').forEach((e) => (e.textContent = ''));
+  if (book) Object.keys(book).forEach((k) => f.elements[k] && (f.elements[k].value = book[k] ?? ''));
+  $('#dlg').showModal();
+}
+
+$('#form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  document.querySelectorAll('.err').forEach((e) => (e.textContent = ''));
+  const body = Object.fromEntries(new FormData(ev.target));
+  try {
+    await api(state.editing ? '/books/' + state.editing : '/books', { method: state.editing ? 'PUT' : 'POST', body: JSON.stringify(body) });
+    $('#dlg').close(); toast(state.editing ? 'Book saved' : 'Book added'); load();
+  } catch (e) {
+    if (e.details) Object.entries(e.details).forEach(([k, m]) => { const s = document.querySelector(`[data-e=${k}]`); if (s) s.textContent = m; });
+    else toast(e.message);
+  }
+});
+
+$('#addBtn').onclick = () => openForm();
+$('#cancel').onclick = () => $('#dlg').close();
+$('#statusFilter').onclick = (e) => {
+  if (e.target.tagName !== 'BUTTON') return;
+  document.querySelectorAll('#statusFilter button').forEach((b) => b.setAttribute('aria-pressed', b === e.target));
+  state.status = e.target.dataset.v; load();
+};
+$('#catFilter').onchange = (e) => { state.category_id = e.target.value; load(); };
+let timer; $('#q').oninput = (e) => { clearTimeout(timer); timer = setTimeout(() => { state.q = e.target.value.trim(); load(); }, 250); };
+
+(async () => {
+  try {
+    const cats = await api('/categories');
+    cats.forEach((c) => ['#catFilter', '#form [name=category_id]'].forEach((s) => {
+      const o = el('option', '', c.name); o.value = c.id; $(s).append(o);
+    }));
+  } catch (e) { toast(e.message); }
+  load();
+})();
+</script>
+</body>
+</html>

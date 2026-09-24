@@ -1,0 +1,12 @@
+# Author: Muhammad Shaheer Haider
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: vault
+      POSTGRES_PASSWORD: vault
+      POSTGRES_DB: book_vault
+    ports: ["5432:5432"]
+    volumes: [vault_data:/var/lib/postgresql/data]
+volumes:
+  vault_data:
